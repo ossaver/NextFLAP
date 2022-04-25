@@ -23,7 +23,7 @@ using namespace std;
 
 // Prints the command-line arguments of the planner
 void printUsage() {
-    cout << "Usage: TRex-TFLAP <domain_file> <problem_file> [-ground] [-static] [-mutex]" << endl;
+    cout << "Usage: NextFLAP <domain_file> <problem_file> [-ground] [-static] [-mutex]" << endl;
     cout << " -ground: generates the GroundedDomain.pddl and GroundedProblem.pddl files." << endl;
     cout << " -static: keeps the static data in the planning task." << endl;
     cout << " -nsas: does not make translation to SAS (finite-domain variables)." << endl;
