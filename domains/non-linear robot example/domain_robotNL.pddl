@@ -3,37 +3,49 @@
     (:types
 		location robot - object)
     (:predicates
-        (at-robot ?r - robot ?loc - location)
-		(base-at ?loc - location)
+        (robot-at ?r - robot ?loc - location)
+		(station-at ?loc - location)
 		(path ?x ?y - location)
+		(attached-to-station ?r - robot)
 	 )
 
 	(:functions
 	  (distance ?x ?y - location)
       (battery-level ?r - robot)
 	)
-		  
-    (:durative-action CHARGE
+	
+	(:durative-action attach
+		:parameters (?r - robot ?loc - location)
+		:duration (and (>= ?duration 1) (<= ?duration 100)) 
+		:condition (and 
+				(at start (not (attached-to-station ?r)))
+				(at start (station-at ?loc))
+				(over all (robot-at ?r ?loc)))
+		:effect (and
+				(at start (attached-to-station ?r))
+				(at end (not (attached-to-station ?r)))))
+          
+    (:durative-action charge
           :parameters (?r - robot ?loc - location)
 		  :control (?percentage - number)
 		  :duration (= ?duration (+ ?percentage (/ (* (battery-level ?r) (* (battery-level ?r) ?percentage)) 5000)))
           :condition (and 
-				(over all (at-robot ?r ?loc))
-				(at start (base-at ?loc))
+				(over all (robot-at ?r ?loc))
+				(over all (attached-to-station ?r))
 				(at start (< (battery-level ?r) 100))
 				(at start (<= ?percentage (- 100 (battery-level ?r))))
 				(at start (> ?percentage 0)))
           :effect (at end (increase (battery-level ?r) ?percentage)))
 
-	(:durative-action MOVE
+	(:durative-action move
 		:parameters (?r - robot ?loc-from - location ?loc-to - location)
 		:duration (= ?duration (/ (distance ?loc-from ?loc-to) 0.1)) 
 		:condition (and
-			(at start (at-robot ?r ?loc-from))
+			(at start (robot-at ?r ?loc-from))
 			(at start (path ?loc-from ?loc-to))
 			(at start (>= (battery-level ?r) (/ (distance ?loc-from ?loc-to) 2))))
 		:effect (and 
-			(at start (not (at-robot ?r ?loc-from)))
+			(at start (not (robot-at ?r ?loc-from)))
 			(at end (decrease (battery-level ?r) (/ (distance ?loc-from ?loc-to) 2)))
-			(at end (at-robot ?r ?loc-to))))
+			(at end (robot-at ?r ?loc-to))))
 )

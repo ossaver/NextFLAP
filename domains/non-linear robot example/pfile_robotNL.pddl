@@ -5,8 +5,8 @@
 	r - robot
 	)
 	(:init
-	(at-robot r A)
-	(base-at B)
+	(robot-at r A)
+	(station-at B)
 	(path A B)
 	(path B C)
 	(= (battery-level r) 15)
@@ -14,7 +14,7 @@
 	(= (distance B C) 50)
 	)
 	(:goal (and
-	(at-robot r C)
+	(robot-at r C)
 	(>= (battery-level r) 50)
 	))
 
