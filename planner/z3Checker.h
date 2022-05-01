@@ -45,7 +45,7 @@ private:
 	expr& getControlVar(int var, TStep s);
 	expr& getProductorVar(TVariable var, TTimePoint tp);
 	expr& getFluent(TVariable var, TTimePoint tp);
-	expr getNumericExpression(SASNumericExpression& e, TTimePoint tp, bool keepValue);
+	expr getNumericExpression(SASNumericExpression& e, TTimePoint tp);
 	inline int intVal(TFloatValue n) { return (int)(n * 1000); };
 	void add(expr const& e);
 	void defineNumericContraint(SASNumericCondition& prec, TTimePoint tp);

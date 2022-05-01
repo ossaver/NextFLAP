@@ -19,7 +19,7 @@
 #include "planner/printPlan.h"
 using namespace std;
 
-#define OPTIMIZE_MAKESPAN false
+#define OPTIMIZE_MAKESPAN true
 
 // Prints the command-line arguments of the planner
 void printUsage() {

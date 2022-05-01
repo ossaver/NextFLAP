@@ -282,7 +282,7 @@ void Successors::computeSuccessors(Plan* base, std::vector<Plan*>* suc, float be
 	for (SASAction& a: task->goals) {
 		fullActionCheck(&a, MAX_UINT16, 0, 0, 0);
 	}
-	if (base->isRoot()) {			// Full calculation of successors
+	if (base->isRoot() || base->action->endEff.empty()) {			// Full calculation of successors
 		fullSuccessorsCalculation();
 	}
 	else { 							// Calculation of successores based on the parent plan

@@ -11,6 +11,8 @@
 bool Z3Checker::checkPlan(Plan* p, bool optimizeMakespan, TControVarValues* cvarValues)
 {
     z3::set_param("parallel.enable", true);
+    z3::set_param("pp.decimal", true);
+    z3::set_param("pp.decimal-precision", 3);
     //std::cout << (optimizeMakespan ? "o" : ".");
     this->optimizeMakespan = optimizeMakespan;
     bool valid = false;
@@ -59,7 +61,7 @@ void Z3Checker::defineVariables(Plan* p, TStep s)
     this->stepVars.emplace_back(s, p);
     Z3StepVariables& vars = this->stepVars.back();
     sprintf_s(varName, 10, "d%d", s);
-    vars.times.push_back(cont->int_const(varName));       // Duration
+    vars.times.push_back(cont->real_const(varName));       // Duration
     sprintf_s(varName, 10, "t%d", stepToStartPoint(s));
     vars.times.push_back(cont->int_const(varName));       // Start time
     sprintf_s(varName, 10, "t%d", stepToEndPoint(s));
@@ -67,21 +69,21 @@ void Z3Checker::defineVariables(Plan* p, TStep s)
     if (p->cvarValues != nullptr) {
         for (int cv = 0; cv < p->cvarValues->size(); cv++) {
             sprintf_s(varName, 10, "c%ds%d", cv, s);    // Control var
-            vars.controlVars.push_back(cont->int_const(varName));
+            vars.controlVars.push_back(cont->real_const(varName));
         }
     }
     if (p->startPoint.numVarValues != nullptr) {
         for (TFluentInterval& i : *(p->startPoint.numVarValues)) {
             sprintf_s(varName, 10, "f%dt%d", i.numVar, stepToStartPoint(s));    // Fluent
             vars.startFluentIndex[i.numVar] = (int)vars.fluents.size();
-            vars.fluents.push_back(cont->int_const(varName));
+            vars.fluents.push_back(cont->real_const(varName));
         }
     }
     if (p->endPoint.numVarValues != nullptr) {
         for (TFluentInterval& i : *(p->endPoint.numVarValues)) {
             sprintf_s(varName, 10, "f%dt%d", i.numVar, stepToEndPoint(s));    // Fluent
             vars.endFluentIndex[i.numVar] = (int)vars.fluents.size();
-            vars.fluents.push_back(cont->int_const(varName));
+            vars.fluents.push_back(cont->real_const(varName));
         }
     }
 }
@@ -110,7 +112,7 @@ void Z3Checker::defineConstraints(Plan* p, TStep s)
     else if (s == 0) add(getPointVar(0) == -1);
     for (SASDurationCondition& d : a->duration.conditions) {    // Action duration
         defineDurationConstraint(d, s);
-        add(getPointVar(end) == getPointVar(start) + getDurationVar(s));
+        add(getPointVar(end) == getPointVar(start) + 1000 * getDurationVar(s));
     }
     for (TOrdering o : p->orderings) {      // Orderings
         TTimePoint tp1 = firstPoint(o), tp2 = secondPoint(o);
@@ -168,21 +170,21 @@ expr& Z3Checker::getFluent(TVariable var, TTimePoint tp)
     return vars.fluents[index];
 }
 
-expr Z3Checker::getNumericExpression(SASNumericExpression& e, TTimePoint tp, bool keepValue)
+expr Z3Checker::getNumericExpression(SASNumericExpression& e, TTimePoint tp)
 {
     switch (e.type) {
     case 'N':   // GE_NUMBER
-        return keepValue ? cont->int_val((int)e.value) : cont->int_val(intVal(e.value));
+        return cont->real_val(intVal(e.value), 1000);
     case 'V':   // GE_VAR
         return getProductorVar(e.var, tp);
     case '+':
-        return getNumericExpression(e.terms[0], tp, false) + getNumericExpression(e.terms[1], tp, false);
+        return getNumericExpression(e.terms[0], tp) + getNumericExpression(e.terms[1], tp);
     case '-':
-        return getNumericExpression(e.terms[0], tp, false) - getNumericExpression(e.terms[1], tp, false);
+        return getNumericExpression(e.terms[0], tp) - getNumericExpression(e.terms[1], tp);
     case '/':
-        return getNumericExpression(e.terms[0], tp, true) / getNumericExpression(e.terms[1], tp, true);
+        return getNumericExpression(e.terms[0], tp) / getNumericExpression(e.terms[1], tp);
     case '*':
-        return getNumericExpression(e.terms[0], tp, true) * getNumericExpression(e.terms[1], tp, true);
+        return getNumericExpression(e.terms[0], tp) * getNumericExpression(e.terms[1], tp);
     case 'D': // GE_DURATION
         return getDurationVar(timePointToStep(tp));
     case 'C': // GE_CONTROL_VAR
@@ -204,22 +206,22 @@ void Z3Checker::defineNumericContraint(SASNumericCondition& prec, TTimePoint tp)
 {
     switch (prec.comp) {
     case '=':
-        add(getNumericExpression(prec.terms[0], tp, false) == getNumericExpression(prec.terms[1], tp, false));
+        add(getNumericExpression(prec.terms[0], tp) == getNumericExpression(prec.terms[1], tp));
         break;
     case '<':
-        add(getNumericExpression(prec.terms[0], tp, false) < getNumericExpression(prec.terms[1], tp, false));
+        add(getNumericExpression(prec.terms[0], tp) < getNumericExpression(prec.terms[1], tp));
         break;
     case 'L':
-        add(getNumericExpression(prec.terms[0], tp, false) <= getNumericExpression(prec.terms[1], tp, false));
+        add(getNumericExpression(prec.terms[0], tp) <= getNumericExpression(prec.terms[1], tp));
         break;
     case '>':
-        add(getNumericExpression(prec.terms[0], tp, false) > getNumericExpression(prec.terms[1], tp, false));
+        add(getNumericExpression(prec.terms[0], tp) > getNumericExpression(prec.terms[1], tp));
         break;
     case 'G':
-        add(getNumericExpression(prec.terms[0], tp, false) >= getNumericExpression(prec.terms[1], tp, false));
+        add(getNumericExpression(prec.terms[0], tp) >= getNumericExpression(prec.terms[1], tp));
         break;
     case 'N':
-        add(getNumericExpression(prec.terms[0], tp, false) != getNumericExpression(prec.terms[1], tp, false));
+        add(getNumericExpression(prec.terms[0], tp) != getNumericExpression(prec.terms[1], tp));
         break;
     }
 }
@@ -229,22 +231,22 @@ void Z3Checker::defineDurationConstraint(SASDurationCondition& d, TStep s)
     TTimePoint tp = d.time != 'E' ? stepToStartPoint(s) : stepToEndPoint(s);
     switch (d.comp) {
     case '=':
-        add(getDurationVar(s) == getNumericExpression(d.exp, tp, false));
+        add(getDurationVar(s) == getNumericExpression(d.exp, tp));
         break;
     case '<':
-        add(getDurationVar(s) < getNumericExpression(d.exp, tp, false));
+        add(getDurationVar(s) < getNumericExpression(d.exp, tp));
         break;
     case 'L':
-        add(getDurationVar(s) <= getNumericExpression(d.exp, tp, false));
+        add(getDurationVar(s) <= getNumericExpression(d.exp, tp));
         break;
     case '>':
-        add(getDurationVar(s) > getNumericExpression(d.exp, tp, false));
+        add(getDurationVar(s) > getNumericExpression(d.exp, tp));
         break;
     case 'G':
-        add(getDurationVar(s) >= getNumericExpression(d.exp, tp, false));
+        add(getDurationVar(s) >= getNumericExpression(d.exp, tp));
         break;
     case 'N':
-        add(getDurationVar(s) != getNumericExpression(d.exp, tp, false));
+        add(getDurationVar(s) != getNumericExpression(d.exp, tp));
         break;
     }
 }
@@ -253,19 +255,19 @@ void Z3Checker::defineNumericEffect(SASNumericEffect& e, TTimePoint tp)
 {
     switch (e.op) {
     case '=': 
-        add(getFluent(e.var, tp) == getNumericExpression(e.exp, tp, false));
+        add(getFluent(e.var, tp) == getNumericExpression(e.exp, tp));
         break;
     case '+':
-        add(getFluent(e.var, tp) == getProductorVar(e.var, tp) + getNumericExpression(e.exp, tp, false));
+        add(getFluent(e.var, tp) == getProductorVar(e.var, tp) + getNumericExpression(e.exp, tp));
         break;
     case '-':
-        add(getFluent(e.var, tp) == getProductorVar(e.var, tp) - getNumericExpression(e.exp, tp, false));
+        add(getFluent(e.var, tp) == getProductorVar(e.var, tp) - getNumericExpression(e.exp, tp));
         break;
     case '*':
-        add(getFluent(e.var, tp) == getProductorVar(e.var, tp) * getNumericExpression(e.exp, tp, false));
+        add(getFluent(e.var, tp) == getProductorVar(e.var, tp) * getNumericExpression(e.exp, tp));
         break;
     case '/':
-        add(getFluent(e.var, tp) == getProductorVar(e.var, tp) / getNumericExpression(e.exp, tp, false));
+        add(getFluent(e.var, tp) == getProductorVar(e.var, tp) / getNumericExpression(e.exp, tp));
         break;
     }
 }
@@ -292,7 +294,7 @@ void Z3Checker::updatePlan(Plan* p, model m, TControVarValues* cvarValues)
         if (cvarValues != nullptr && pc->cvarValues != nullptr) {
             std::vector<float> valuesList;
             for (int cv = 0; cv < pc->action->controlVars.size(); cv++)
-                valuesList.push_back(m.eval(getControlVar(cv, s)).as_double() / 1000.0f);
+                valuesList.push_back(m.eval(getControlVar(cv, s)).as_double());
             (*cvarValues)[s] = valuesList;
         }
         if (p == pc) {
@@ -319,7 +321,7 @@ void Z3Checker::updateFluentValues(std::vector<TFluentInterval>* numValues, TTim
     if (numValues == nullptr) return;
     for (int i = 0; i < numValues->size(); i++) {
         TFluentInterval* f = &(numValues->at(i));
-        TFloatValue value = (TFloatValue)m.eval(getFluent(f->numVar, tp)).as_double() / 1000.0f;
+        TFloatValue value = (TFloatValue)m.eval(getFluent(f->numVar, tp)).as_double();
         f->interval.minValue = f->interval.maxValue = value;
     }
 }
