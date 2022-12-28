@@ -101,6 +101,8 @@ void Successors::fullActionCheck(SASAction* a, TVariable var, TValue value, TTim
 	if (supportedConditions(a)) {	 // Check if the (non-numeric) action preconditions can be supported by the steps in the current base plan
 		int numSupportState = supportedNumericConditions(a);
 		if (numSupportState != -2) { // Supported
+			//if (a->isGoal)
+			//	cout << "aqui" << endl;
 			//cout << "Action " << a->name << " supported" << endl;
 			PlanBuilder pb(a, newStep, &matrix, numSupportState, &planEffects, task);
 			unsigned int n = 0;
@@ -120,7 +122,7 @@ void Successors::setNumericCausalLinks(PlanBuilder* pb, int numSupportState) {
 	addNumericSupport(pb, 0, &supportingTimePoints);
 	*/
 	std::vector<TTimePoint> initialSupportingTimePoints;
-	while (numSupportState >= 0) {
+	while (numSupportState >= 0 && this->solution == nullptr) {
 		std::vector<TTimePoint> supportingTimePoints;
 		computeSupportingTimePoints(pb->action, numSupportState, &supportingTimePoints);
 		if (supportingTimePoints != initialSupportingTimePoints) {
