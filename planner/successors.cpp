@@ -297,7 +297,7 @@ void Successors::computeSuccessors(Plan* base, std::vector<Plan*>* suc, float be
 	computeBasePlanEffects(linearizer.linearOrder);
 	successors = suc;
 	suc->clear();
-	for (SASAction& a: task->goals) {
+	for (SASAction& a : task->goals) {
 		fullActionCheck(&a, MAX_UINT16, 0, 0, 0);
 	}
 	if (base->isRoot() || base->action->endEff.empty()) {			// Full calculation of successors
@@ -306,7 +306,6 @@ void Successors::computeSuccessors(Plan* base, std::vector<Plan*>* suc, float be
 	else { 							// Calculation of successores based on the parent plan
 		computeSuccessorsSupportedByLastActions();
 		computeSuccessorsThroughBrotherPlans();
-		checkNumericActions();
 	}
 }
 
@@ -329,14 +328,6 @@ bool Successors::repeatedState(Plan* p)
 		memo[code] = v;
 	}
 	return false;
-}
-
-void Successors::checkNumericActions() {
-	for (SASAction* a : task->actionsWithoutConditions) {
-		if (!visitedAction(a)) {
-			fullActionCheck(a, MAX_UINT16, 0, 0, 0);
-		}
-	}
 }
 
 // Computes the succesors obtained by adding new actions which are supported by the last action added in the base plan  
@@ -363,6 +354,24 @@ void Successors::computeSuccessorsSupportedByLastActions()
 				setVisitedAction(ra);
 				//cout << "Action " << ra->name << " supported by at-end" << endl;
 				fullActionCheck(ra, c.var, c.value, startTimeLastAction + 1, startTimeNewAction);
+			}
+		}
+	}
+	for (SASNumericEffect& c : a->startNumEff) {
+		vector<SASAction*>& req = task->numRequirers[c.var];
+		for (SASAction* ra : req) {
+			if (!visitedAction(ra)) {
+				setVisitedAction(ra);
+				fullActionCheck(ra, MAX_UINT16, 0, startTimeLastAction, startTimeNewAction);
+			}
+		}
+	}
+	for (SASNumericEffect& c : a->endNumEff) {
+		vector<SASAction*>& req = task->numRequirers[c.var];
+		for (SASAction* ra : req) {
+			if (!visitedAction(ra)) {
+				setVisitedAction(ra);
+				fullActionCheck(ra, MAX_UINT16, 0, startTimeLastAction + 1, startTimeNewAction);
 			}
 		}
 	}

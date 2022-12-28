@@ -87,7 +87,6 @@ private:
 	SASCondition* getRequiredValue(TTimePoint p, SASAction* a, TVariable var);
 	void addSuccessor(Plan* p);
 	void computeSuccessorsSupportedByLastActions();
-	void checkNumericActions();
 	inline bool visitedAction(SASAction* a) { return checkedAction[a->index] == currentIteration; }
 	inline void setVisitedAction(SASAction* a) { checkedAction[a->index] = currentIteration; }
 	unsigned int addActionSupport(PlanBuilder* pb, TVariable var, TValue value, TTimePoint effectTime,
