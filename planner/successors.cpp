@@ -132,24 +132,35 @@ void Successors::setNumericCausalLinks(PlanBuilder* pb, int numSupportState) {
 }
 
 void Successors::computeSupportingTimePoints(SASAction* action, int numSupportState, std::vector<TTimePoint>* supportingTimePoints) {
-	for (TVariable v : task->numVarReqAtStart[action->index]) {
-		int ns = numSupportState;
-		while (planEffects.numStates[ns].values[v] == nullptr)
-			ns--;
-		supportingTimePoints->push_back(planEffects.numStates[ns].timepoint);
+	if (action->isGoal) {
+		for (TVariable v : task->numVarReqGoal[action->index]) {
+			int ns = numSupportState;
+			while (planEffects.numStates[ns].values[v] == nullptr)
+				ns--;
+			supportingTimePoints->push_back(planEffects.numStates[ns].timepoint);
+		}
 	}
-	
-	for (TVariable v : task->numVarReqAtEnd[action->index]) {
-		int ns = numSupportState;
-		while (planEffects.numStates[ns].values[v] == nullptr)
-			ns--;
-		supportingTimePoints->push_back(planEffects.numStates[ns].timepoint);
+	else {
+		for (TVariable v : task->numVarReqAtStart[action->index]) {
+			int ns = numSupportState;
+			while (planEffects.numStates[ns].values[v] == nullptr)
+				ns--;
+			supportingTimePoints->push_back(planEffects.numStates[ns].timepoint);
+		}
+
+		for (TVariable v : task->numVarReqAtEnd[action->index]) {
+			int ns = numSupportState;
+			while (planEffects.numStates[ns].values[v] == nullptr)
+				ns--;
+			supportingTimePoints->push_back(planEffects.numStates[ns].timepoint);
+		}
 	}
 }
 
 void Successors::addNumericSupport(PlanBuilder* pb, int numCond, std::vector<TTimePoint>* supportingTimePoints)
 {
-	std::vector<TVariable>& atStart = task->numVarReqAtStart[pb->action->index];
+	std::vector<TVariable>& atStart = pb->action->isGoal ? task->numVarReqGoal[pb->action->index]
+		: task->numVarReqAtStart[pb->action->index];
 	if (numCond < atStart.size()) {
 		TTimePoint tp = supportingTimePoints->at(numCond);
 		TVariable v = atStart[numCond];
@@ -159,18 +170,23 @@ void Successors::addNumericSupport(PlanBuilder* pb, int numCond, std::vector<TTi
 		}
 	}
 	else {
-		std::vector<TVariable>& atEnd = task->numVarReqAtEnd[pb->action->index];
-		int n = numCond - (int)atStart.size();
-		if (n < atEnd.size()) {
-			TTimePoint tp = supportingTimePoints->at(numCond);
-			TVariable v = atEnd[n];
-			if (pb->addNumLink(v, tp, stepToEndPoint(newStep))) {
-				addNumericSupport(pb, numCond + 1, supportingTimePoints);
-				pb->removeLastLink();
-			}
+		if (pb->action->isGoal) {
+			fullActionSupportCheck(pb);	// Continue with non-numeric conditions
 		}
 		else {
-			fullActionSupportCheck(pb);	// Continue with non-numeric conditions
+			std::vector<TVariable>& atEnd = task->numVarReqAtEnd[pb->action->index];
+			int n = numCond - (int)atStart.size();
+			if (n < atEnd.size()) {
+				TTimePoint tp = supportingTimePoints->at(numCond);
+				TVariable v = atEnd[n];
+				if (pb->addNumLink(v, tp, stepToEndPoint(newStep))) {
+					addNumericSupport(pb, numCond + 1, supportingTimePoints);
+					pb->removeLastLink();
+				}
+			}
+			else {
+				fullActionSupportCheck(pb);	// Continue with non-numeric conditions
+			}
 		}
 	}
 }
