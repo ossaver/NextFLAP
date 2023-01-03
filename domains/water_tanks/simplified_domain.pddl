@@ -25,25 +25,11 @@
 	  (battery-level ?r - robot)
 	)
 
-	(:durative-action move_with_jar
-		:parameters (?r - robot ?j - jar ?loc-from - location ?loc-to - location)
-		:duration (= ?duration (+ 10 (/ (level ?j) 10))) 
-		:condition (and
-			(at start (>= (battery-level ?r) 10))
-			(at start (>= (level ?j) 0))
-			(at start (has ?r ?j))
-			(at start (at-robot ?r ?loc-from)))
-		:effect (and
-			(at start (not (at-robot ?r ?loc-from)))
-			(at end (decrease (battery-level ?r) 10))
-			(at end (at-robot ?r ?loc-to))))
-
 	(:durative-action move
 		:parameters (?r - robot ?loc-from - location ?loc-to - location)
 		:duration (= ?duration 10) 
 		:condition (and
 			(at start (>= (battery-level ?r) 10))
-			(at start (empty ?r))
 			(at start (at-robot ?r ?loc-from)))
 		:effect (and 
 			(at start (not (at-robot ?r ?loc-from)))
@@ -79,7 +65,7 @@
 	
 	(:durative-action empty-jar
 		:parameters (?r - robot ?j - jar ?loc - location)
-		:duration (= ?duration (level ?j)) 
+		:duration (= ?duration 5) 
 		:condition (and
 			(at start (>= (battery-level ?r) 5))
 			(at start (not-using-jar))
